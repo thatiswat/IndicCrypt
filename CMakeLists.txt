@@ -7,6 +7,10 @@ project(
     LANGUAGES CXX
 )
 
+# ---------------------------------------------------------------------------
+# C++ Configuration
+# ---------------------------------------------------------------------------
+
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -41,53 +45,79 @@ message(STATUS "ICU include: ${ICU_INCLUDE_DIR}")
 message(STATUS "ICU library: ${ICU_UC_LIBRARY}")
 
 # ---------------------------------------------------------------------------
-# Core library
+# IndicCrypt Core Library
 # ---------------------------------------------------------------------------
 
 add_library(indiccrypt_core
     core/indiccrypt.cpp
+    core/text/indic_text.cpp
 )
 
 target_include_directories(indiccrypt_core
     PUBLIC
         ${PROJECT_SOURCE_DIR}/include
+
+    PRIVATE
         ${ICU_INCLUDE_DIR}
 )
 
 target_link_libraries(indiccrypt_core
-    PUBLIC
+    PRIVATE
         ${ICU_UC_LIBRARY}
 )
 
 target_compile_features(indiccrypt_core
-    PUBLIC cxx_std_23
+    PUBLIC
+        cxx_std_23
 )
 
+# ---------------------------------------------------------------------------
+# Compiler Warnings
+# ---------------------------------------------------------------------------
+
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
-    target_compile_options(indiccrypt_core PRIVATE
-        -Wall
-        -Wextra
-        -Wpedantic
-        -Wconversion
-        -Wshadow
+    target_compile_options(indiccrypt_core
+        PRIVATE
+            -Wall
+            -Wextra
+            -Wpedantic
+            -Wconversion
+            -Wshadow
     )
 endif()
 
 # ---------------------------------------------------------------------------
-# Tests
+# Testing
 # ---------------------------------------------------------------------------
 
 enable_testing()
 
+# Core tests
 add_executable(indiccrypt_tests
     tests/test_core.cpp
 )
 
 target_link_libraries(indiccrypt_tests
-    PRIVATE indiccrypt_core
+    PRIVATE
+        indiccrypt_core
 )
 
 add_test(
-    NAME indiccrypt_tests
+    NAME indiccrypt_core_tests
     COMMAND indiccrypt_tests
+)
+
+# IndicText tests
+add_executable(indiccrypt_text_tests
+    tests/text/test_indic_text.cpp
+)
+
+target_link_libraries(indiccrypt_text_tests
+    PRIVATE
+        indiccrypt_core
+)
+
+add_test(
+    NAME indiccrypt_text_tests
+    COMMAND indiccrypt_text_tests
 )
