@@ -45,6 +45,33 @@ message(STATUS "ICU include: ${ICU_INCLUDE_DIR}")
 message(STATUS "ICU library: ${ICU_UC_LIBRARY}")
 
 # ---------------------------------------------------------------------------
+# OpenSSL
+# ---------------------------------------------------------------------------
+
+set(OPENSSL_ROOT "/usr/local/opt/openssl@3")
+
+find_path(
+    OPENSSL_INCLUDE_DIR
+    NAMES openssl/evp.h
+    PATHS "${OPENSSL_ROOT}/include"
+    NO_DEFAULT_PATH
+)
+
+find_library(
+    OPENSSL_CRYPTO_LIBRARY
+    NAMES crypto
+    PATHS "${OPENSSL_ROOT}/lib"
+    NO_DEFAULT_PATH
+)
+
+if(NOT OPENSSL_INCLUDE_DIR OR NOT OPENSSL_CRYPTO_LIBRARY)
+    message(FATAL_ERROR "OpenSSL 3 was not found")
+endif()
+
+message(STATUS "OpenSSL include: ${OPENSSL_INCLUDE_DIR}")
+message(STATUS "OpenSSL crypto: ${OPENSSL_CRYPTO_LIBRARY}")
+
+# ---------------------------------------------------------------------------
 # IndicCrypt Core Library
 # ---------------------------------------------------------------------------
 
@@ -56,6 +83,9 @@ add_library(indiccrypt_core
     core/text/language.cpp
     core/text/symbol.cpp
     core/text/canonicalizer.cpp
+    core/crypto/types.cpp
+    core/crypto/kdf.cpp
+    core/crypto/aes_gcm.cpp
 )
 
 target_include_directories(indiccrypt_core
@@ -64,11 +94,13 @@ target_include_directories(indiccrypt_core
 
     PRIVATE
         ${ICU_INCLUDE_DIR}
+        ${OPENSSL_INCLUDE_DIR}
 )
 
 target_link_libraries(indiccrypt_core
     PRIVATE
         ${ICU_UC_LIBRARY}
+        ${OPENSSL_CRYPTO_LIBRARY}
 )
 
 target_compile_features(indiccrypt_core
@@ -221,4 +253,94 @@ target_link_libraries(indiccrypt_canonicalizer_tests
 add_test(
     NAME indiccrypt_canonicalizer_tests
     COMMAND indiccrypt_canonicalizer_tests
+)
+
+# ---------------------------------------------------------------------------
+# Cryptographic Type Tests
+# ---------------------------------------------------------------------------
+
+add_executable(indiccrypt_crypto_types_tests
+    tests/crypto/test_crypto_types.cpp
+)
+
+target_link_libraries(indiccrypt_crypto_types_tests
+    PRIVATE
+        indiccrypt_core
+)
+
+add_test(
+    NAME indiccrypt_crypto_types_tests
+    COMMAND indiccrypt_crypto_types_tests
+)
+
+# ---------------------------------------------------------------------------
+# Key Derivation Tests
+# ---------------------------------------------------------------------------
+
+add_executable(indiccrypt_kdf_tests
+    tests/crypto/test_kdf.cpp
+)
+
+target_link_libraries(indiccrypt_kdf_tests
+    PRIVATE
+        indiccrypt_core
+)
+
+add_test(
+    NAME indiccrypt_kdf_tests
+    COMMAND indiccrypt_kdf_tests
+)
+
+# ---------------------------------------------------------------------------
+# HKDF Verification Tests
+# ---------------------------------------------------------------------------
+
+add_executable(indiccrypt_hkdf_tests
+    tests/crypto/test_hkdf_rfc5869.cpp
+)
+
+target_link_libraries(indiccrypt_hkdf_tests
+    PRIVATE
+        indiccrypt_core
+)
+
+add_test(
+    NAME indiccrypt_hkdf_tests
+    COMMAND indiccrypt_hkdf_tests
+)
+
+# ---------------------------------------------------------------------------
+# Key Lifecycle Tests
+# ---------------------------------------------------------------------------
+
+add_executable(indiccrypt_key_lifecycle_tests
+    tests/crypto/test_key_lifecycle.cpp
+)
+
+target_link_libraries(indiccrypt_key_lifecycle_tests
+    PRIVATE
+        indiccrypt_core
+)
+
+add_test(
+    NAME indiccrypt_key_lifecycle_tests
+    COMMAND indiccrypt_key_lifecycle_tests
+)
+
+# ---------------------------------------------------------------------------
+# AES-GCM Tests
+# ---------------------------------------------------------------------------
+
+add_executable(indiccrypt_aes_gcm_tests
+    tests/crypto/test_aes_gcm.cpp
+)
+
+target_link_libraries(indiccrypt_aes_gcm_tests
+    PRIVATE
+        indiccrypt_core
+)
+
+add_test(
+    NAME indiccrypt_aes_gcm_tests
+    COMMAND indiccrypt_aes_gcm_tests
 )
