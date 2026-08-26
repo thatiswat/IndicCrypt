@@ -35,7 +35,7 @@ int main() {
     };
 
     const ByteVector ciphertext =
-        Aes256Block::encrypt(
+        AesBlock::encrypt(
             key,
             plaintext
         );

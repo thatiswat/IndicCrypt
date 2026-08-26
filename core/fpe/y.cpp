@@ -11,6 +11,15 @@ namespace indiccrypt::fpe {
 
 namespace {
 
+bool isValidAesKeySize(
+    std::size_t size
+) {
+    return
+        size == crypto::AesBlock::Aes128KeySize ||
+        size == crypto::AesBlock::Aes192KeySize ||
+        size == crypto::AesBlock::Aes256KeySize;
+}
+
 crypto::ByteVector xorBlocks(
     std::span<const crypto::Byte> left,
     std::span<const crypto::Byte> right
@@ -25,13 +34,17 @@ crypto::ByteVector xorBlocks(
     }
 
     crypto::ByteVector result(
-        Ff1YGenerator::BlockSize
+        Ff1YGenerator::BlockSize,
+        static_cast<crypto::Byte>(0)
     );
 
-    for (std::size_t i = 0;
-         i < Ff1YGenerator::BlockSize;
-         ++i) {
-        result[i] = left[i] ^ right[i];
+    for (
+        std::size_t i = 0;
+        i < Ff1YGenerator::BlockSize;
+        ++i
+    ) {
+        result[i] =
+            left[i] ^ right[i];
     }
 
     return result;
@@ -75,15 +88,17 @@ Ff1YGenerator::Bytes Ff1YGenerator::generate(
     std::span<const crypto::Byte> r,
     std::size_t length
 ) {
-    if (key.size() != crypto::Aes256Block::KeySize) {
+    if (!isValidAesKeySize(key.size())) {
         throw std::invalid_argument(
-            "FF1 Y generation requires a 32-byte AES-256 key"
+            "FF1 Y generation requires a "
+            "16, 24, or 32-byte AES key"
         );
     }
 
     if (r.size() != BlockSize) {
         throw std::invalid_argument(
-            "FF1 Y generation requires a 16-byte R value"
+            "FF1 Y generation requires a "
+            "16-byte R value"
         );
     }
 
@@ -92,19 +107,25 @@ Ff1YGenerator::Bytes Ff1YGenerator::generate(
     }
 
     Bytes output;
+
     output.reserve(length);
 
     /*
-     * Y starts with R.
+     * S starts with R.
      */
     const std::size_t initialTake =
-        std::min(length, BlockSize);
+        std::min(
+            length,
+            BlockSize
+        );
 
     output.insert(
         output.end(),
         r.begin(),
         r.begin() +
-            static_cast<std::ptrdiff_t>(initialTake)
+            static_cast<std::ptrdiff_t>(
+                initialTake
+            )
     );
 
     if (output.size() == length) {
@@ -114,11 +135,11 @@ Ff1YGenerator::Bytes Ff1YGenerator::generate(
     /*
      * Continue with:
      *
-     * AES_K(
-     *     R XOR [j]^16
-     * )
+     *     AES_K(
+     *         R XOR [j]^16
+     *     )
      *
-     * where j starts at 1.
+     * j = 1, 2, ...
      */
     std::uint32_t counter = 1U;
 
@@ -133,7 +154,7 @@ Ff1YGenerator::Bytes Ff1YGenerator::generate(
             );
 
         const auto encrypted =
-            crypto::Aes256Block::encrypt(
+            crypto::AesBlock::encrypt(
                 key,
                 mixed
             );
@@ -151,7 +172,9 @@ Ff1YGenerator::Bytes Ff1YGenerator::generate(
             output.end(),
             encrypted.begin(),
             encrypted.begin() +
-                static_cast<std::ptrdiff_t>(take)
+                static_cast<std::ptrdiff_t>(
+                    take
+                )
         );
 
         ++counter;

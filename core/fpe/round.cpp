@@ -16,6 +16,75 @@ namespace indiccrypt::fpe {
 
 namespace {
 
+std::size_t requiredByteLength(
+    const FpeRadix& radix,
+    std::size_t length
+) {
+    if (length == 0U) {
+        return 0U;
+    }
+
+    /*
+     * We need:
+     *
+     *     b = ceil(ceil(length * log2(radix)) / 8)
+     *
+     * The maximum radix number with `length`
+     * digits is radix^length - 1.
+     *
+     * Its bit length is exactly:
+     *
+     *     ceil(length * log2(radix))
+     *
+     * for the FF1 calculation.
+     */
+    const auto maximum =
+        Ff1NumeralMath::radixPower(
+            radix,
+            length
+        ) - 1;
+
+    if (maximum == 0) {
+        return 1U;
+    }
+
+    std::size_t bits = 0U;
+
+    auto value = maximum;
+
+    while (value > 0) {
+        value >>= 1;
+        ++bits;
+    }
+
+    return (bits + 7U) / 8U;
+}
+
+std::size_t calculateYLength(
+    const FpeRadix& radix,
+    std::size_t m
+) {
+    /*
+     * FF1:
+     *
+     *     b = ceil(ceil(m * log2(radix)) / 8)
+     *
+     *     d = 4 * ceil(b / 4) + 4
+     */
+    const std::size_t b =
+        requiredByteLength(
+            radix,
+            m
+        );
+
+    const std::size_t bBlocks =
+        (b + 3U) / 4U;
+
+    return
+        (4U * bBlocks) +
+        4U;
+}
+
 void validateRoundInputs(
     const FpeParameters& parameters,
     std::span<const Ff1Round::Digit> a,
@@ -61,33 +130,29 @@ std::vector<Ff1Round::Digit> computeRound(
         a.size() + b.size();
 
     /*
-     * FF1 Feistel round:
+     * FF1 round:
+     *
+     *     m = |A|
      *
      *     C = (NUM(A) +/- Y) mod radix^m
-     *     A' = B
-     *     B' = C
      *
-     * The output C always has the same length
-     * as the current A.
-     *
-     * This is especially important for odd n.
-     *
-     * Example n = 3:
-     *
-     *     A = 1, B = 2
-     *     C has length 1
-     *
-     *     next:
-     *     A = 2, B = 1
-     *     C has length 2
-     *
-     * Therefore m = |A| for every round.
+     * The result therefore has exactly |A|
+     * digits.
      */
     const std::size_t m =
         a.size();
 
     /*
-     * Q is constructed from the current B.
+     * ---------------------------------------------------------
+     * Q
+     * ---------------------------------------------------------
+     *
+     * Q contains:
+     *
+     *     T
+     *     || zero padding
+     *     || round
+     *     || NUM(B)
      */
     const auto q =
         Ff1QBlock::build(
@@ -98,7 +163,9 @@ std::vector<Ff1Round::Digit> computeRound(
         );
 
     /*
-     * P || Q becomes the PRF input.
+     * ---------------------------------------------------------
+     * P
+     * ---------------------------------------------------------
      */
     const auto p =
         Ff1ParameterBlock::build(
@@ -106,6 +173,11 @@ std::vector<Ff1Round::Digit> computeRound(
             n
         );
 
+    /*
+     * ---------------------------------------------------------
+     * P || Q
+     * ---------------------------------------------------------
+     */
     std::vector<std::byte> prfInput;
 
     prfInput.reserve(
@@ -125,9 +197,11 @@ std::vector<Ff1Round::Digit> computeRound(
     );
 
     /*
+     * ---------------------------------------------------------
      * R = PRF_K(P || Q)
+     * ---------------------------------------------------------
      *
-     * Ff1Prf returns one 16-byte AES block.
+     * R is always exactly one AES block.
      */
     const auto r =
         Ff1Prf::evaluate(
@@ -137,13 +211,31 @@ std::vector<Ff1Round::Digit> computeRound(
         );
 
     /*
-     * Generate Y from R.
+     * ---------------------------------------------------------
+     * Generate S/Y
+     * ---------------------------------------------------------
      *
-     * Y is represented as a 16-byte
-     * arbitrary-precision integer.
+     * FF1 requires:
+     *
+     *     b = ceil(ceil(m * log2(radix)) / 8)
+     *
+     *     d = 4 * ceil(b / 4) + 4
+     *
+     * For the NIST decimal vector:
+     *
+     *     m = 5
+     *     radix = 10
+     *     b = 3
+     *     d = 8
+     *
+     * Therefore we MUST NOT always request
+     * a full 16-byte Y value.
      */
-    constexpr std::size_t yLength =
-        Ff1YGenerator::BlockSize;
+    const std::size_t yLength =
+        calculateYLength(
+            parameters.domain().radix(),
+            m
+        );
 
     const auto yBytes =
         Ff1YGenerator::generate(
@@ -153,9 +245,7 @@ std::vector<Ff1Round::Digit> computeRound(
         );
 
     /*
-     * Ff1YGenerator uses crypto::ByteVector
-     * (uint8_t), while Ff1YNumber expects
-     * std::byte.
+     * Convert crypto::ByteVector to std::byte.
      */
     std::vector<std::byte> yAsBytes;
 
@@ -169,13 +259,18 @@ std::vector<Ff1Round::Digit> computeRound(
         );
     }
 
+    /*
+     * Y = NUM(S)
+     */
     const auto yValue =
         Ff1YNumber::fromBytes(
             yAsBytes
         );
 
     /*
-     * Convert A to its radix integer value.
+     * ---------------------------------------------------------
+     * NUM(A)
+     * ---------------------------------------------------------
      */
     const Ff1Numeral aNumeral(
         parameters.domain().radix(),
@@ -189,7 +284,9 @@ std::vector<Ff1Round::Digit> computeRound(
         aNumeral.toInteger();
 
     /*
-     * C is calculated modulo radix^m.
+     * ---------------------------------------------------------
+     * radix^m
+     * ---------------------------------------------------------
      */
     const auto modulus =
         Ff1NumeralMath::radixPower(
@@ -214,16 +311,15 @@ std::vector<Ff1Round::Digit> computeRound(
             (aValue - yValue) %
             modulus;
 
-        /*
-         * Normalize negative modulo.
-         */
         if (result < 0) {
             result += modulus;
         }
     }
 
     /*
-     * Convert the result back to radix digits.
+     * ---------------------------------------------------------
+     * Convert result back to radix digits.
+     * ---------------------------------------------------------
      */
     const auto resultNumeral =
         Ff1Numeral::fromInteger(

@@ -11,6 +11,9 @@ int main() {
     using namespace indiccrypt::crypto;
     using namespace indiccrypt::fpe;
 
+    /*
+     * AES-256 test key.
+     */
     const ByteVector keyBytes{
         0x60, 0x3d, 0xeb, 0x10,
         0x15, 0xca, 0x71, 0xbe,
@@ -25,8 +28,10 @@ int main() {
     const Key key(keyBytes);
 
     /*
-     * FF1 PRF input is P || Q and therefore
-     * must be a non-empty multiple of 16 bytes.
+     * FF1 PRF input is P || Q and must be:
+     *
+     *   - non-empty
+     *   - a multiple of 16 bytes
      */
     const std::vector<std::byte> input(
         32,
@@ -34,7 +39,9 @@ int main() {
     );
 
     /*
-     * Basic PRF evaluation.
+     * ---------------------------------------------------------
+     * Basic PRF evaluation
+     * ---------------------------------------------------------
      */
     const auto output =
         Ff1Prf::evaluate(
@@ -49,7 +56,9 @@ int main() {
     );
 
     /*
-     * Determinism.
+     * ---------------------------------------------------------
+     * Determinism
+     * ---------------------------------------------------------
      */
     const auto repeated =
         Ff1Prf::evaluate(
@@ -64,8 +73,10 @@ int main() {
     );
 
     /*
+     * ---------------------------------------------------------
      * Different input must produce
      * a different PRF result.
+     * ---------------------------------------------------------
      */
     auto changedInput = input;
 
@@ -85,7 +96,9 @@ int main() {
     );
 
     /*
-     * Multiple FF1 blocks.
+     * ---------------------------------------------------------
+     * Multiple FF1 blocks
+     * ---------------------------------------------------------
      */
     const std::vector<std::byte> largerInput(
         48,
@@ -105,8 +118,10 @@ int main() {
     );
 
     /*
+     * ---------------------------------------------------------
      * Different key must produce
      * a different result.
+     * ---------------------------------------------------------
      */
     const ByteVector otherKeyBytes(
         32,
@@ -130,7 +145,9 @@ int main() {
     );
 
     /*
+     * ---------------------------------------------------------
      * Empty input must be rejected.
+     * ---------------------------------------------------------
      */
     bool emptyRejected = false;
 
@@ -151,7 +168,9 @@ int main() {
     );
 
     /*
+     * ---------------------------------------------------------
      * Non-block-aligned input must be rejected.
+     * ---------------------------------------------------------
      */
     bool invalidLengthRejected = false;
 
@@ -175,14 +194,24 @@ int main() {
     );
 
     /*
-     * Invalid key size must be rejected.
+     * ---------------------------------------------------------
+     * Invalid AES key size must be rejected.
+     *
+     * Valid FF1 AES keys:
+     *
+     *   16 bytes -> AES-128
+     *   24 bytes -> AES-192
+     *   32 bytes -> AES-256
+     *
+     * Therefore 15 bytes is intentionally invalid.
+     * ---------------------------------------------------------
      */
     bool invalidKeyRejected = false;
 
     try {
         const Key invalidKey(
             ByteVector(
-                16,
+                15,
                 static_cast<Byte>(0x42)
             )
         );
@@ -201,7 +230,9 @@ int main() {
     );
 
     /*
-     * Output-length control.
+     * ---------------------------------------------------------
+     * Output-length control
+     * ---------------------------------------------------------
      */
     const auto shortOutput =
         Ff1Prf::evaluate(
@@ -226,7 +257,9 @@ int main() {
     );
 
     /*
-     * Zero-length output.
+     * ---------------------------------------------------------
+     * Zero-length output
+     * ---------------------------------------------------------
      */
     const auto emptyOutput =
         Ff1Prf::evaluate(

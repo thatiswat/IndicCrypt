@@ -492,6 +492,24 @@ add_test(
 )
 
 # ---------------------------------------------------------------------------
+# FF1 Vector Tests
+# ---------------------------------------------------------------------------
+
+add_executable(indiccrypt_ff1_vector_tests
+    tests/fpe/test_ff1_vectors.cpp
+)
+
+target_link_libraries(indiccrypt_ff1_vector_tests
+    PRIVATE
+        indiccrypt_core
+)
+
+add_test(
+    NAME indiccrypt_ff1_vector_tests
+    COMMAND indiccrypt_ff1_vector_tests
+)
+
+# ---------------------------------------------------------------------------
 # FPE Numeral Tests
 # ---------------------------------------------------------------------------
 

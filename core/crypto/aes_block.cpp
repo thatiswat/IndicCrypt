@@ -16,7 +16,8 @@ using EvpContextPtr =
     >;
 
 EvpContextPtr makeContext() {
-    EVP_CIPHER_CTX* raw = EVP_CIPHER_CTX_new();
+    EVP_CIPHER_CTX* raw =
+        EVP_CIPHER_CTX_new();
 
     if (raw == nullptr) {
         throw std::runtime_error(
@@ -30,19 +31,43 @@ EvpContextPtr makeContext() {
     };
 }
 
+const EVP_CIPHER* selectCipher(
+    std::size_t keySize
+) {
+    switch (keySize) {
+        case AesBlock::Aes128KeySize:
+            return EVP_aes_128_ecb();
+
+        case AesBlock::Aes192KeySize:
+            return EVP_aes_192_ecb();
+
+        case AesBlock::Aes256KeySize:
+            return EVP_aes_256_ecb();
+
+        default:
+            throw std::invalid_argument(
+                "AES requires a 16, 24, or 32-byte key"
+            );
+    }
+}
+
 } // namespace
 
-ByteVector Aes256Block::encrypt(
+ByteVector AesBlock::encrypt(
     const Key& key,
     std::span<const Byte> block
 ) {
-    if (key.size() != KeySize) {
+    if (
+        key.size() != AesBlock::Aes128KeySize &&
+        key.size() != AesBlock::Aes192KeySize &&
+        key.size() != AesBlock::Aes256KeySize
+    ) {
         throw std::invalid_argument(
-            "AES-256 requires a 32-byte key"
+            "AES requires a 16, 24, or 32-byte key"
         );
     }
 
-    if (block.size() != BlockSize) {
+    if (block.size() != AesBlock::BlockSize) {
         throw std::invalid_argument(
             "AES block encryption requires exactly 16 bytes"
         );
@@ -50,15 +75,18 @@ ByteVector Aes256Block::encrypt(
 
     auto context = makeContext();
 
+    const EVP_CIPHER* cipher =
+        selectCipher(key.size());
+
     if (EVP_EncryptInit_ex(
             context.get(),
-            EVP_aes_256_ecb(),
+            cipher,
             nullptr,
             key.bytes().data(),
             nullptr
         ) != 1) {
         throw std::runtime_error(
-            "AES-256 block initialization failed"
+            "AES block initialization failed"
         );
     }
 
@@ -71,7 +99,9 @@ ByteVector Aes256Block::encrypt(
         );
     }
 
-    ByteVector output(BlockSize);
+    ByteVector output(
+        AesBlock::BlockSize
+    );
 
     int outputLength = 0;
 
@@ -83,7 +113,7 @@ ByteVector Aes256Block::encrypt(
             static_cast<int>(block.size())
         ) != 1) {
         throw std::runtime_error(
-            "AES-256 block encryption failed"
+            "AES block encryption failed"
         );
     }
 
@@ -95,7 +125,7 @@ ByteVector Aes256Block::encrypt(
             &finalLength
         ) != 1) {
         throw std::runtime_error(
-            "AES-256 block finalization failed"
+            "AES block finalization failed"
         );
     }
 
@@ -105,9 +135,9 @@ ByteVector Aes256Block::encrypt(
         )
     );
 
-    if (output.size() != BlockSize) {
+    if (output.size() != AesBlock::BlockSize) {
         throw std::runtime_error(
-            "AES-256 produced an invalid block size"
+            "AES produced an invalid block size"
         );
     }
 

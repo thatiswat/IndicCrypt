@@ -29,11 +29,9 @@ crypto::ByteVector xorBlock(
         static_cast<crypto::Byte>(0)
     );
 
-    for (
-        std::size_t i = 0;
-        i < Ff1Prf::BlockSize;
-        ++i
-    ) {
+    for (std::size_t i = 0;
+         i < Ff1Prf::BlockSize;
+         ++i) {
         result[i] =
             std::to_integer<crypto::Byte>(left[i])
             ^ right[i];
@@ -60,16 +58,23 @@ crypto::ByteVector xorCryptoBlocks(
         static_cast<crypto::Byte>(0)
     );
 
-    for (
-        std::size_t i = 0;
-        i < Ff1Prf::BlockSize;
-        ++i
-    ) {
+    for (std::size_t i = 0;
+         i < Ff1Prf::BlockSize;
+         ++i) {
         result[i] =
             left[i] ^ right[i];
     }
 
     return result;
+}
+
+bool isValidAesKeySize(
+    std::size_t size
+) {
+    return
+        size == crypto::AesBlock::Aes128KeySize ||
+        size == crypto::AesBlock::Aes192KeySize ||
+        size == crypto::AesBlock::Aes256KeySize;
 }
 
 } // namespace
@@ -83,12 +88,13 @@ Ff1Prf::Bytes Ff1Prf::evaluate(
         return {};
     }
 
-    if (
-        key.size() !=
-        crypto::Aes256Block::KeySize
-    ) {
+    /*
+     * FF1 supports AES-128, AES-192 and AES-256.
+     */
+    if (!isValidAesKeySize(key.size())) {
         throw std::invalid_argument(
-            "FF1 PRF requires a 32-byte AES-256 key"
+            "FF1 PRF requires a 16, 24, "
+            "or 32-byte AES key"
         );
     }
 
@@ -105,9 +111,9 @@ Ff1Prf::Bytes Ff1Prf::evaluate(
     /*
      * R = 0^128
      *
-     * R = AES_K(R XOR X)
+     * For every 16-byte block X:
      *
-     * for every 16-byte input block X.
+     *     R = AES_K(R XOR X)
      */
     crypto::ByteVector chaining(
         BlockSize,
@@ -132,14 +138,14 @@ Ff1Prf::Bytes Ff1Prf::evaluate(
             );
 
         chaining =
-            crypto::Aes256Block::encrypt(
+            crypto::AesBlock::encrypt(
                 key,
                 mixed
             );
     }
 
     /*
-     * The first output block is R.
+     * First output block is R.
      */
     Bytes output;
 
@@ -155,11 +161,14 @@ Ff1Prf::Bytes Ff1Prf::evaluate(
         output.end(),
         chaining.begin(),
         chaining.begin() +
-            static_cast<std::ptrdiff_t>(firstTake)
+            static_cast<std::ptrdiff_t>(
+                firstTake
+            )
     );
 
     /*
-     * Extend output if requested.
+     * Extend output when more than one
+     * AES block is requested.
      */
     std::uint32_t counter = 1U;
 
@@ -196,7 +205,7 @@ Ff1Prf::Bytes Ff1Prf::evaluate(
             );
 
         const auto encrypted =
-            crypto::Aes256Block::encrypt(
+            crypto::AesBlock::encrypt(
                 key,
                 mixed
             );
@@ -214,7 +223,9 @@ Ff1Prf::Bytes Ff1Prf::evaluate(
             output.end(),
             encrypted.begin(),
             encrypted.begin() +
-                static_cast<std::ptrdiff_t>(take)
+                static_cast<std::ptrdiff_t>(
+                    take
+                )
         );
 
         ++counter;
