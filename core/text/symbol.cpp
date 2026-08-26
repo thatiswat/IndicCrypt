@@ -31,4 +31,13 @@ Language IndicSymbol::language() const noexcept {
     return language_;
 }
 
+bool IndicSymbol::operator==(
+    const IndicSymbol& other
+) const noexcept {
+    return id_ == other.id_
+        && grapheme_ == other.grapheme_
+        && script_ == other.script_
+        && language_ == other.language_;
+}
+
 } // namespace indiccrypt::text

@@ -77,15 +77,31 @@ message(STATUS "OpenSSL crypto: ${OPENSSL_CRYPTO_LIBRARY}")
 
 add_library(indiccrypt_core
     core/indiccrypt.cpp
+
     core/text/indic_text.cpp
     core/text/grapheme.cpp
     core/text/script.cpp
     core/text/language.cpp
     core/text/symbol.cpp
     core/text/canonicalizer.cpp
+
     core/crypto/types.cpp
     core/crypto/kdf.cpp
     core/crypto/aes_gcm.cpp
+    core/crypto/aes_block.cpp
+
+    core/fpe/alphabet.cpp
+    core/fpe/codec.cpp
+    core/fpe/radix.cpp
+    core/fpe/domain.cpp
+    core/fpe/parameters.cpp
+    core/fpe/ff1.cpp
+    core/fpe/numeral.cpp
+    core/fpe/numeral_math.cpp
+    core/fpe/prf.cpp
+    core/fpe/parameter_block.cpp
+    core/fpe/q_block.cpp
+    core/fpe/numeral_encoding.cpp
 )
 
 target_include_directories(indiccrypt_core
@@ -343,4 +359,238 @@ target_link_libraries(indiccrypt_aes_gcm_tests
 add_test(
     NAME indiccrypt_aes_gcm_tests
     COMMAND indiccrypt_aes_gcm_tests
+)
+
+# ---------------------------------------------------------------------------
+# AES Block Tests
+# ---------------------------------------------------------------------------
+
+add_executable(indiccrypt_aes_block_tests
+    tests/crypto/test_aes_block.cpp
+)
+
+target_link_libraries(indiccrypt_aes_block_tests
+    PRIVATE
+        indiccrypt_core
+)
+
+add_test(
+    NAME indiccrypt_aes_block_tests
+    COMMAND indiccrypt_aes_block_tests
+)
+
+# ---------------------------------------------------------------------------
+# FPE Alphabet Tests
+# ---------------------------------------------------------------------------
+
+add_executable(indiccrypt_fpe_alphabet_tests
+    tests/fpe/test_fpe_alphabet.cpp
+)
+
+target_link_libraries(indiccrypt_fpe_alphabet_tests
+    PRIVATE
+        indiccrypt_core
+)
+
+add_test(
+    NAME indiccrypt_fpe_alphabet_tests
+    COMMAND indiccrypt_fpe_alphabet_tests
+)
+
+# ---------------------------------------------------------------------------
+# FPE Codec Tests
+# ---------------------------------------------------------------------------
+
+add_executable(indiccrypt_fpe_codec_tests
+    tests/fpe/test_fpe_codec.cpp
+)
+
+target_link_libraries(indiccrypt_fpe_codec_tests
+    PRIVATE
+        indiccrypt_core
+)
+
+add_test(
+    NAME indiccrypt_fpe_codec_tests
+    COMMAND indiccrypt_fpe_codec_tests
+)
+
+# ---------------------------------------------------------------------------
+# FPE Radix Tests
+# ---------------------------------------------------------------------------
+
+add_executable(indiccrypt_fpe_radix_tests
+    tests/fpe/test_fpe_radix.cpp
+)
+
+target_link_libraries(indiccrypt_fpe_radix_tests
+    PRIVATE
+        indiccrypt_core
+)
+
+add_test(
+    NAME indiccrypt_fpe_radix_tests
+    COMMAND indiccrypt_fpe_radix_tests
+)
+
+# ---------------------------------------------------------------------------
+# FPE Domain Tests
+# ---------------------------------------------------------------------------
+
+add_executable(indiccrypt_fpe_domain_tests
+    tests/fpe/test_fpe_domain.cpp
+)
+
+target_link_libraries(indiccrypt_fpe_domain_tests
+    PRIVATE
+        indiccrypt_core
+)
+
+add_test(
+    NAME indiccrypt_fpe_domain_tests
+    COMMAND indiccrypt_fpe_domain_tests
+)
+
+# ---------------------------------------------------------------------------
+# FPE Parameters Tests
+# ---------------------------------------------------------------------------
+
+add_executable(indiccrypt_fpe_parameters_tests
+    tests/fpe/test_fpe_parameters.cpp
+)
+
+target_link_libraries(indiccrypt_fpe_parameters_tests
+    PRIVATE
+        indiccrypt_core
+)
+
+add_test(
+    NAME indiccrypt_fpe_parameters_tests
+    COMMAND indiccrypt_fpe_parameters_tests
+)
+
+# ---------------------------------------------------------------------------
+# FF1 Tests
+# ---------------------------------------------------------------------------
+
+add_executable(indiccrypt_ff1_tests
+    tests/fpe/test_ff1.cpp
+)
+
+target_link_libraries(indiccrypt_ff1_tests
+    PRIVATE
+        indiccrypt_core
+)
+
+add_test(
+    NAME indiccrypt_ff1_tests
+    COMMAND indiccrypt_ff1_tests
+)
+
+# ---------------------------------------------------------------------------
+# FPE Numeral Tests
+# ---------------------------------------------------------------------------
+
+add_executable(indiccrypt_fpe_numeral_tests
+    tests/fpe/test_fpe_numeral.cpp
+)
+
+target_link_libraries(indiccrypt_fpe_numeral_tests
+    PRIVATE
+        indiccrypt_core
+)
+
+add_test(
+    NAME indiccrypt_fpe_numeral_tests
+    COMMAND indiccrypt_fpe_numeral_tests
+)
+
+# ---------------------------------------------------------------------------
+# Numeral Math Tests
+# ---------------------------------------------------------------------------
+
+add_executable(indiccrypt_numeral_math_tests
+    tests/fpe/test_numeral_math.cpp
+)
+
+target_link_libraries(indiccrypt_numeral_math_tests
+    PRIVATE
+        indiccrypt_core
+)
+
+add_test(
+    NAME indiccrypt_numeral_math_tests
+    COMMAND indiccrypt_numeral_math_tests
+)
+
+# ---------------------------------------------------------------------------
+# FPE PRF Tests
+# ---------------------------------------------------------------------------
+
+add_executable(indiccrypt_fpe_prf_tests
+    tests/fpe/test_fpe_prf.cpp
+)
+
+target_link_libraries(indiccrypt_fpe_prf_tests
+    PRIVATE
+        indiccrypt_core
+)
+
+add_test(
+    NAME indiccrypt_fpe_prf_tests
+    COMMAND indiccrypt_fpe_prf_tests
+)
+
+# ---------------------------------------------------------------------------
+# FPE Parameter Block Tests
+# ---------------------------------------------------------------------------
+
+add_executable(indiccrypt_fpe_parameter_block_tests
+    tests/fpe/test_fpe_parameter_block.cpp
+)
+
+target_link_libraries(indiccrypt_fpe_parameter_block_tests
+    PRIVATE
+        indiccrypt_core
+)
+
+add_test(
+    NAME indiccrypt_fpe_parameter_block_tests
+    COMMAND indiccrypt_fpe_parameter_block_tests
+)
+
+# ---------------------------------------------------------------------------
+# FPE Q-Block Tests
+# ---------------------------------------------------------------------------
+
+add_executable(indiccrypt_fpe_q_block_tests
+    tests/fpe/test_fpe_q_block.cpp
+)
+
+target_link_libraries(indiccrypt_fpe_q_block_tests
+    PRIVATE
+        indiccrypt_core
+)
+
+add_test(
+    NAME indiccrypt_fpe_q_block_tests
+    COMMAND indiccrypt_fpe_q_block_tests
+)
+
+# ---------------------------------------------------------------------------
+# FPE Numeral Encoding Tests
+# ---------------------------------------------------------------------------
+
+add_executable(indiccrypt_fpe_numeral_encoding_tests
+    tests/fpe/test_fpe_numeral_encoding.cpp
+)
+
+target_link_libraries(indiccrypt_fpe_numeral_encoding_tests
+    PRIVATE
+        indiccrypt_core
+)
+
+add_test(
+    NAME indiccrypt_fpe_numeral_encoding_tests
+    COMMAND indiccrypt_fpe_numeral_encoding_tests
 )

@@ -30,6 +30,9 @@ public:
     [[nodiscard]]
     Language language() const noexcept;
 
+    [[nodiscard]]
+    bool operator==(const IndicSymbol& other) const noexcept;
+
 private:
     SymbolId id_;
     std::string grapheme_;
