@@ -1,5 +1,7 @@
 #include "indiccrypt/core.hpp"
 
+#include <unicode/unistr.h>
+
 namespace indiccrypt {
 
 CryptoCore::CryptoCore(std::uint64_t seed)
