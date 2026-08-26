@@ -1,24 +1,30 @@
 # IndicCrypt
 
-**IndicCrypt** is a C++ cryptographic library focused on secure encryption and
-format-preserving encryption for Indic-language text.
+IndicCrypt is a C++23 cryptographic library focused on **format-preserving encryption (FPE) for Indic-language text**.
 
-The project combines a structured Indic text-processing layer with modern
-cryptographic primitives and an implementation of the foundations required for
-FF1-style format-preserving encryption.
+The project combines:
 
-> **Status:** Active development  
-> **Current test status:** 25/25 tests passing  
+- Unicode-aware Indic text processing
+- Script and language-aware symbol modeling
+- Structured encryption domains
+- Modern cryptographic primitives
+- Arbitrary-precision arithmetic
+- FF1 format-preserving encryption
+
+> **Status:** Active development
+>
+> **Current test status:** 29/29 tests passing
+>
 > **Language:** C++23
 
 ---
 
 ## Vision
 
-Indic languages have linguistic structures that are not well represented by
-treating text as arbitrary bytes.
+Indic languages have linguistic structures that are not well represented by treating
+text as arbitrary bytes.
 
-IndicCrypt is being designed around a different model:
+IndicCrypt is designed around a structured representation:
 
 ```text
 Indic Text
@@ -33,83 +39,202 @@ Indic Symbols
 Language / Script Aware Domain
     │
     ▼
-Format-Preserving Encryption
+FPE Radix Representation
+    │
+    ▼
+FF1 Format-Preserving Encryption
+    │
+    ▼
+Encrypted Symbol Domain
     │
     ▼
 Encrypted Indic Text
 ````
 
-The long-term goal is to allow applications to protect sensitive Indic text
-while preserving its structural representation.
+The long-term goal is to allow applications to protect sensitive Indic text while
+preserving its structural representation.
 
 ---
 
-## Current Status
+# Current Status
 
-IndicCrypt is being developed incrementally with independently tested layers.
+IndicCrypt is being developed incrementally through independently tested layers.
 
-### Completed
+## Completed
 
-* Unicode foundation using ICU4C
-* Grapheme processing
-* Indic script model
-* Indic language model
-* `IndicSymbol`
-* Text canonicalization
-* Cryptographic byte/key types
-* Key lifecycle primitives
-* KDF
-* HKDF
-* AES block primitives
-* AES-256-GCM
-* FPE alphabet abstraction
-* FPE codec
-* FPE radix
-* FPE domain
-* FPE parameters
-* Arbitrary-precision FPE numerals
-* FPE numeral mathematics
-* FF1 parameter infrastructure
-* FF1 PRF foundation
-* FF1 `P` parameter block
-* FF1 `Q` block foundation
-* Arbitrary-precision numeral encoding
-* 25 automated test suites
+### Text foundation
 
-### Currently in development
+* [x] Unicode foundation using ICU4C
+* [x] Grapheme processing
+* [x] Indic script model
+* [x] Indic language model
+* [x] `IndicSymbol`
+* [x] Text canonicalization
 
-The actual FF1 encryption/decryption round construction is still being
-implemented.
+### Cryptographic foundation
 
-The current development path is:
+* [x] Cryptographic byte/key types
+* [x] Key lifecycle primitives
+* [x] KDF
+* [x] HKDF
+* [x] AES block primitives
+* [x] AES-256-GCM
+
+### FPE foundation
+
+* [x] FPE alphabet abstraction
+* [x] FPE codec
+* [x] FPE radix
+* [x] FPE domain
+* [x] FPE parameters
+* [x] Arbitrary-precision FPE numerals
+* [x] FPE numeral mathematics
+* [x] Numeral encoding
+
+### FF1 implementation
+
+* [x] FF1 parameter block (`P`)
+* [x] FF1 `Q` block
+* [x] FF1 PRF
+* [x] FF1 Y generation
+* [x] FF1 Y number representation
+* [x] FF1 round value arithmetic
+* [x] FF1 round function
+* [x] 10-round FF1 Feistel construction
+* [x] FF1 encryption
+* [x] FF1 decryption
+* [x] Even-length message handling
+* [x] Odd-length message handling
+* [x] Message-length preservation
+* [x] Radix-domain preservation
+
+---
+
+# FF1 Pipeline
+
+The current FF1 implementation is structured as:
 
 ```text
-P
-+
-Q
-│
-▼
-PRF
-│
-▼
-Y
-│
-▼
-FF1 Round Function
-│
-▼
-10 Feistel Rounds
-│
-▼
-Encryption / Decryption
-│
-▼
-Known-Answer Test Vectors
+Input
+  │
+  ▼
+FpeParameters
+  │
+  ├── Domain
+  ├── Key
+  └── Tweak
+  │
+  ▼
+Initial A / B split
+  │
+  ▼
+┌──────────────────────────────┐
+│       FF1 Round 0            │
+│                              │
+│ P + Q                        │
+│   ↓                          │
+│ PRF                          │
+│   ↓                          │
+│ Y                            │
+│   ↓                          │
+│ NUM(A) ± Y mod radix^m       │
+└──────────────────────────────┘
+  │
+  ▼
+Round 1
+  │
+  ▼
+...
+  │
+  ▼
+Round 9
+  │
+  ▼
+Ciphertext
 ```
 
-IndicCrypt should not be considered production-ready cryptographic software
-until the complete algorithm has been implemented, independently validated,
-and reviewed.
+Decryption performs the same construction in reverse order using subtraction.
+
+---
+
+# Format Preservation
+
+FF1 operates on radix values instead of producing arbitrary binary ciphertext.
+
+Conceptually:
+
+```text
+Plaintext:
+
+[0, 1, 0, 1, 0]
+
+        │
+        ▼
+       FF1
+        │
+        ▼
+
+Ciphertext:
+
+[1, 0, 1, 1, 0]
+```
+
+The ciphertext remains inside the configured radix domain and preserves the
+original message length.
+
+This property is important for structured data and text domains.
+
+---
+
+# Odd-Length Messages
+
+The implementation explicitly handles odd-length inputs.
+
+Examples currently tested include:
+
+```text
+2 digits
+3 digits
+4 digits
+5 digits
+6 digits
+7 digits
+8 digits
+9 digits
+10 digits
+```
+
+For odd lengths, the FF1 halves alternate in size during the Feistel rounds.
+
+For example, with three digits:
+
+```text
+Round 0:
+
+A = 1 digit
+B = 2 digits
+
+        ↓
+
+C = 1 digit
+
+        ↓
+
+A = previous B
+B = C
+
+
+Round 1:
+
+A = 2 digits
+B = 1 digit
+
+        ↓
+
+C = 2 digits
+```
+
+The implementation preserves the total message length throughout the process.
 
 ---
 
@@ -141,10 +266,15 @@ IndicCrypt
 │       ├── parameters
 │       ├── numeral
 │       ├── numeral math
+│       ├── numeral encoding
 │       ├── PRF
 │       ├── parameter block
 │       ├── Q block
-│       └── numeral encoding
+│       ├── Y
+│       ├── Y number
+│       ├── round value
+│       ├── round
+│       └── FF1
 │
 ├── include/
 │   └── indiccrypt/
@@ -184,7 +314,7 @@ The primary symbol abstraction is:
 indiccrypt::text::IndicSymbol
 ```
 
-Each symbol contains:
+A symbol contains:
 
 ```text
 Symbol ID
@@ -193,65 +323,40 @@ Script
 Language
 ```
 
-This allows the FPE layer to operate on a controlled symbol domain rather than
+This allows the FPE layer to operate on a controlled symbol domain instead of
 directly operating on arbitrary UTF-8 byte sequences.
 
 ---
 
-# Cryptographic Layer
+# FPE Domain
 
-IndicCrypt uses established cryptographic primitives rather than attempting
-to implement fundamental primitives from scratch where an established
-cryptographic library is appropriate.
-
-The current cryptographic layer includes:
-
-```text
-Key
-│
-├── KDF
-├── HKDF
-└── AES
-     ├── AES block operations
-     └── AES-256-GCM
-```
-
-AES-GCM is implemented through OpenSSL's EVP interface.
-
-The cryptographic layer includes validation and negative tests for invalid
-parameters and authentication failures.
-
----
-
-# Format-Preserving Encryption
-
-The FPE subsystem is designed around a domain abstraction.
+The FPE subsystem separates text representation from mathematical encryption.
 
 ```text
 IndicSymbol
-     │
-     ▼
+    │
+    ▼
 FpeAlphabet
-     │
-     ▼
+    │
+    ▼
 FpeCodec
-     │
-     ▼
+    │
+    ▼
 FpeRadix
-     │
-     ▼
+    │
+    ▼
 FpeDomain
-     │
-     ▼
+    │
+    ▼
 FpeParameters
-     │
-     ▼
-FF1
+    │
+    ▼
+Ff1
 ```
 
 ## FpeAlphabet
 
-Defines the symbols that belong to an encryption domain.
+Defines the symbols belonging to an encryption domain.
 
 ```cpp
 FpeAlphabet(
@@ -279,8 +384,7 @@ and:
 FpeRadix::Value[]
 ```
 
-This separates the representation of text from the mathematical representation
-used by FPE.
+This separates text representation from the numerical representation used by FF1.
 
 ---
 
@@ -288,7 +392,7 @@ used by FPE.
 
 Represents the numerical domain used by FPE.
 
-It validates that every digit satisfies:
+Each digit satisfies:
 
 ```text
 0 <= digit < radix
@@ -346,48 +450,31 @@ size()
 empty()
 ```
 
-The numeral layer supports values substantially larger than 64-bit integers.
-
-This is important for FPE domains with large radix powers.
+This allows the FPE implementation to operate on radix powers substantially larger
+than 64-bit integer limits.
 
 ---
 
-# FF1 Foundation
+# FF1 Components
 
-The FF1 subsystem currently contains the building blocks required for the
-algorithm.
+The FF1 implementation is split into small components:
 
 ```text
 Ff1
-│
-├── Ff1Numeral
-├── Ff1NumeralMath
-├── Ff1NumeralEncoding
-├── Ff1Prf
-├── Ff1ParameterBlock
-└── Ff1QBlock
+ │
+ ├── Ff1Numeral
+ ├── Ff1NumeralMath
+ ├── Ff1NumeralEncoding
+ ├── Ff1Prf
+ ├── Ff1ParameterBlock
+ ├── Ff1QBlock
+ ├── Ff1YGenerator
+ ├── Ff1YNumber
+ ├── Ff1RoundValue
+ └── Ff1Round
 ```
 
-## Parameter block
-
-The FF1 `P` block is represented as a fixed 16-byte structure.
-
-Its construction is independently tested.
-
-## Q block
-
-The project also contains the Q-block construction layer, which is being
-refined toward the complete FF1 specification.
-
-## PRF
-
-The FF1 PRF layer is independently tested and will be used by the final
-round-function implementation.
-
-## Numeral encoding
-
-Arbitrary-precision FF1 numerals can be encoded into fixed-width big-endian
-byte sequences.
+Each component has its own tests where appropriate.
 
 ---
 
@@ -395,63 +482,44 @@ byte sequences.
 
 IndicCrypt uses CTest with CMake/Ninja.
 
-Current status:
+Current result:
 
 ```text
-25 / 25 tests passing
+29/29 tests passed
+
 100% tests passed
+
+Total Test time ≈ 13 seconds
 ```
 
-The test suite covers the major layers of the project.
-
-Examples include:
-
-```text
-indiccrypt_core_tests
-indiccrypt_text_tests
-indiccrypt_grapheme_tests
-indiccrypt_script_tests
-indiccrypt_language_tests
-indiccrypt_symbol_tests
-indiccrypt_canonicalizer_tests
-
-indiccrypt_crypto_types_tests
-indiccrypt_kdf_tests
-indiccrypt_hkdf_tests
-indiccrypt_key_lifecycle_tests
-indiccrypt_aes_gcm_tests
-indiccrypt_aes_block_tests
-
-indiccrypt_fpe_alphabet_tests
-indiccrypt_fpe_codec_tests
-indiccrypt_fpe_radix_tests
-indiccrypt_fpe_domain_tests
-indiccrypt_fpe_parameters_tests
-indiccrypt_fpe_numeral_tests
-indiccrypt_numeral_math_tests
-
-indiccrypt_ff1_tests
-indiccrypt_fpe_prf_tests
-indiccrypt_fpe_parameter_block_tests
-indiccrypt_fpe_q_block_tests
-indiccrypt_fpe_numeral_encoding_tests
-```
-
-Run the complete test suite with:
+Run the complete suite:
 
 ```bash
 ctest --test-dir build --output-on-failure
 ```
 
-Expected result:
+Run the FF1 integration test:
 
-```text
-100% tests passed
+```bash
+ctest --test-dir build -R indiccrypt_ff1_tests -V
 ```
+
+The FF1 test suite currently verifies:
+
+* Encryption executes successfully
+* Decryption executes successfully
+* Encryption is deterministic
+* Decryption recovers the original plaintext
+* Ciphertext remains inside the radix
+* Message length is preserved
+* Invalid digits are rejected
+* Even-length messages
+* Odd-length messages
+* Multiple message lengths
 
 ---
 
-# Building
+# Build
 
 ## Requirements
 
@@ -464,11 +532,29 @@ IndicCrypt currently requires:
 * ICU4C
 * Boost
 
-The project is currently being developed and tested on macOS.
+The project is currently developed and tested on macOS.
+
+## Configure
+
+```bash
+cmake -S . -B build -G Ninja
+```
+
+## Build
+
+```bash
+cmake --build build
+```
+
+## Test
+
+```bash
+ctest --test-dir build --output-on-failure
+```
 
 ---
 
-## Dependencies
+# Dependencies
 
 ### OpenSSL
 
@@ -480,45 +566,15 @@ Used for Unicode-aware text processing.
 
 ### Boost.Multiprecision
 
-Used for arbitrary-precision integer arithmetic required by the FPE layer.
-
----
-
-# Build
-
-Clone the repository:
-
-```bash
-git clone https://github.com/thatiswat/IndicCrypt.git
-cd IndicCrypt
-```
-
-Configure:
-
-```bash
-cmake -S . -B build -G Ninja
-```
-
-Build:
-
-```bash
-cmake --build build
-```
-
-Run tests:
-
-```bash
-ctest --test-dir build --output-on-failure
-```
+Used for arbitrary-precision arithmetic required by the FPE implementation.
 
 ---
 
 # Development Workflow
 
-IndicCrypt is intentionally being built in small, independently tested
-milestones.
+IndicCrypt is intentionally being built in independently tested milestones.
 
-The current progression is approximately:
+Current progression:
 
 ```text
 Unicode foundation
@@ -529,7 +585,7 @@ Cryptographic primitives
         ↓
 FPE domain
         ↓
-Arbitrary precision numerals
+Arbitrary-precision numerals
         ↓
 FF1 infrastructure
         ↓
@@ -537,21 +593,25 @@ P block
         ↓
 Q block
         ↓
-NUM_radix encoding
+PRF
         ↓
-FF1 round function
+Y generation
+        ↓
+FF1 round arithmetic
         ↓
 Complete FF1
         ↓
 Indic text integration
         ↓
-Validation / test vectors
+Known-answer vectors
+        ↓
+Differential testing
         ↓
 Security review
 ```
 
-Every major component is expected to have its own tests before it becomes part
-of the next layer.
+The major difference from earlier stages is that **the FF1 encryption/decryption
+engine is now implemented and passing its integration tests**.
 
 ---
 
@@ -559,7 +619,7 @@ of the next layer.
 
 Security is a primary design goal.
 
-The repository contains ongoing research and design documentation:
+The repository contains ongoing security and design documentation:
 
 ```text
 research/crypto-design.md
@@ -567,65 +627,59 @@ research/search-security.md
 research/threat-model.md
 ```
 
-These documents describe the current security assumptions, design decisions,
-and threat model.
-
 However:
 
-> **IndicCrypt is currently experimental software and should not be used to
-> protect production secrets.**
+> **IndicCrypt is experimental software and should not yet be used to protect
+> production secrets.**
 
-A complete implementation requires:
-
-* Complete FF1 implementation
-* Official known-answer test vectors
-* Interoperability testing
-* Boundary-condition testing
-* Negative/security testing
-* Independent cryptographic review
-* Careful API and key-management review
-
-Passing the project's unit tests does **not** constitute cryptographic
+Passing 29/29 unit and integration tests does not constitute cryptographic
 validation.
+
+Before a production release, the project still requires:
+
+* Official FF1 known-answer test vectors
+* Differential/interoperability testing
+* Extensive boundary testing
+* Fuzz testing
+* Security review
+* Cryptographic review
+* API review
+* Key-management review
+* Performance benchmarking
 
 ---
 
 # Design Principles
 
-IndicCrypt follows several principles:
+## 1. Structured text
 
-### 1. Structured text
+Indic text is represented through language, script, grapheme, and symbol abstractions.
 
-Indic text is represented through language, script, grapheme, and symbol
-abstractions.
+## 2. Separation of concerns
 
-### 2. Separation of concerns
+Text processing, domain encoding, cryptography, and FPE mathematics remain separate
+layers.
 
-Text processing, domain encoding, cryptography, and FPE mathematics are kept in
-separate layers.
+## 3. Established cryptography
 
-### 3. Established cryptography
+Established cryptographic primitives such as OpenSSL are preferred where appropriate.
 
-Cryptographic primitives should rely on established implementations such as
-OpenSSL where appropriate.
+## 4. Explicit validation
 
-### 4. Explicit validation
+Invalid keys, lengths, radix digits, and numerical values are rejected explicitly.
 
-Invalid keys, nonces, tags, radix digits, lengths, and numerical values should
-be rejected explicitly.
-
-### 5. Arbitrary precision
+## 5. Arbitrary precision
 
 FPE arithmetic should not be artificially constrained by native integer sizes.
 
-### 6. Test-driven development
+## 6. Test-driven development
 
-Each subsystem is introduced together with independent tests.
+Major subsystems are introduced with independent tests.
 
-### 7. No premature production claims
+## 7. No premature production claims
 
-The project will not be considered production-ready merely because the current
-test suite passes.
+Passing tests is a milestone, not proof that a cryptographic implementation is ready
+for production.
 
 ---
 
@@ -659,21 +713,24 @@ test suite passes.
 * [x] Parameters
 * [x] Numeral representation
 * [x] Numeral mathematics
+* [x] Numeral encoding
 
 ## Phase 4 — FF1
 
 * [x] FF1 API
-* [x] FF1 PRF foundation
+* [x] FF1 PRF
 * [x] FF1 P block
-* [x] FF1 Q block foundation
-* [x] Arbitrary-precision numeral encoding
-* [ ] Exact P/Q integration
-* [ ] Complete PRF input construction
-* [ ] FF1 round function
-* [ ] FF1 encryption
-* [ ] FF1 decryption
-* [ ] Official test vectors
-* [ ] Interoperability testing
+* [x] FF1 Q block
+* [x] Y generation
+* [x] Y number representation
+* [x] Round value arithmetic
+* [x] FF1 round function
+* [x] FF1 encryption
+* [x] FF1 decryption
+* [x] Even-length handling
+* [x] Odd-length handling
+* [ ] Official FF1 known-answer vectors
+* [ ] Differential/interoperability testing
 
 ## Phase 5 — Indic FPE
 
@@ -681,7 +738,9 @@ test suite passes.
 * [ ] Language-specific domains
 * [ ] Script-specific domains
 * [ ] Grapheme-preserving encryption
-* [ ] Indic text encrypt/decrypt API
+* [ ] Indic text encryption API
+* [ ] Indic text decryption API
+* [ ] End-to-end Indic text tests
 
 ## Phase 6 — Security & Release
 
@@ -699,25 +758,30 @@ test suite passes.
 # Project Status
 
 ```text
-Current milestone: FF1 foundation
+Current milestone:  FF1 implementation
 
-Tests:             25 / 25
-Build:             Passing
-Text foundation:   Complete
-Crypto foundation: Complete
-FPE foundation:    Complete
-FF1 implementation: In progress
-Production ready:  No
+Tests:              29 / 29
+Build:              Passing
+Text foundation:    Complete
+Crypto foundation:  Complete
+FPE foundation:     Complete
+FF1 rounds:         Complete
+FF1 encryption:     Complete
+FF1 decryption:     Complete
+
+Known-answer tests: Pending
+Indic text API:     Pending
+Security review:    Pending
+Production ready:   No
 ```
 
 ---
 
 # License
 
-License information will be added as the project approaches its first public
-release.
+License information will be added as the project approaches its first public release.
 
 ```
 
-This README now accurately reflects the project at **25/25 tests** without pretending that the actual FF1 encryption/decryption engine is complete.
+This version matches your **actual current milestone**: the FF1 engine is no longer merely “in development”; you have reached **29/29 passing tests**. Your uploaded README's old 25/25 status and “FF1 implementation still being implemented” section are now stale. :contentReference[oaicite:1]{index=1}
 ```
