@@ -4,6 +4,7 @@
 
 #include <cassert>
 #include <cstddef>
+#include <stdexcept>
 #include <vector>
 
 int main() {
@@ -23,34 +24,185 @@ int main() {
 
     const Key key(keyBytes);
 
-    const std::vector<std::byte> input{
-        std::byte{0x01},
-        std::byte{0x02},
-        std::byte{0x03},
-        std::byte{0x04},
-        std::byte{0x05}
-    };
+    /*
+     * FF1 PRF input is P || Q and therefore
+     * must be a non-empty multiple of 16 bytes.
+     */
+    const std::vector<std::byte> input(
+        32,
+        std::byte{0x00}
+    );
 
+    /*
+     * Basic PRF evaluation.
+     */
     const auto output =
         Ff1Prf::evaluate(
             key,
             input,
-            16
+            Ff1Prf::BlockSize
         );
 
-    assert(output.size() == 16);
+    assert(
+        output.size() ==
+        Ff1Prf::BlockSize
+    );
 
-    // Determinism.
+    /*
+     * Determinism.
+     */
     const auto repeated =
         Ff1Prf::evaluate(
             key,
             input,
-            16
+            Ff1Prf::BlockSize
         );
 
-    assert(output == repeated);
+    assert(
+        output ==
+        repeated
+    );
 
-    // Different output lengths.
+    /*
+     * Different input must produce
+     * a different PRF result.
+     */
+    auto changedInput = input;
+
+    changedInput[0] =
+        std::byte{0xff};
+
+    const auto changed =
+        Ff1Prf::evaluate(
+            key,
+            changedInput,
+            Ff1Prf::BlockSize
+        );
+
+    assert(
+        output !=
+        changed
+    );
+
+    /*
+     * Multiple FF1 blocks.
+     */
+    const std::vector<std::byte> largerInput(
+        48,
+        std::byte{0x11}
+    );
+
+    const auto largerOutput =
+        Ff1Prf::evaluate(
+            key,
+            largerInput,
+            Ff1Prf::BlockSize
+        );
+
+    assert(
+        largerOutput.size() ==
+        Ff1Prf::BlockSize
+    );
+
+    /*
+     * Different key must produce
+     * a different result.
+     */
+    const ByteVector otherKeyBytes(
+        32,
+        static_cast<Byte>(0x42)
+    );
+
+    const Key otherKey(
+        otherKeyBytes
+    );
+
+    const auto differentKeyOutput =
+        Ff1Prf::evaluate(
+            otherKey,
+            input,
+            Ff1Prf::BlockSize
+        );
+
+    assert(
+        output !=
+        differentKeyOutput
+    );
+
+    /*
+     * Empty input must be rejected.
+     */
+    bool emptyRejected = false;
+
+    try {
+        const std::vector<std::byte> emptyInput;
+
+        (void)Ff1Prf::evaluate(
+            key,
+            emptyInput,
+            Ff1Prf::BlockSize
+        );
+    } catch (const std::invalid_argument&) {
+        emptyRejected = true;
+    }
+
+    assert(
+        emptyRejected
+    );
+
+    /*
+     * Non-block-aligned input must be rejected.
+     */
+    bool invalidLengthRejected = false;
+
+    try {
+        const std::vector<std::byte> invalidInput(
+            17,
+            std::byte{0x00}
+        );
+
+        (void)Ff1Prf::evaluate(
+            key,
+            invalidInput,
+            Ff1Prf::BlockSize
+        );
+    } catch (const std::invalid_argument&) {
+        invalidLengthRejected = true;
+    }
+
+    assert(
+        invalidLengthRejected
+    );
+
+    /*
+     * Invalid key size must be rejected.
+     */
+    bool invalidKeyRejected = false;
+
+    try {
+        const Key invalidKey(
+            ByteVector(
+                16,
+                static_cast<Byte>(0x42)
+            )
+        );
+
+        (void)Ff1Prf::evaluate(
+            invalidKey,
+            input,
+            Ff1Prf::BlockSize
+        );
+    } catch (const std::invalid_argument&) {
+        invalidKeyRejected = true;
+    }
+
+    assert(
+        invalidKeyRejected
+    );
+
+    /*
+     * Output-length control.
+     */
     const auto shortOutput =
         Ff1Prf::evaluate(
             key,
@@ -58,7 +210,9 @@ int main() {
             8
         );
 
-    assert(shortOutput.size() == 8);
+    assert(
+        shortOutput.size() == 8
+    );
 
     const auto longOutput =
         Ff1Prf::evaluate(
@@ -67,30 +221,23 @@ int main() {
             32
         );
 
-    assert(longOutput.size() == 32);
+    assert(
+        longOutput.size() == 32
+    );
 
-    // Different input should produce a different result.
-    auto changedInput = input;
-    changedInput[0] = std::byte{0xff};
-
-    const auto changed =
-        Ff1Prf::evaluate(
-            key,
-            changedInput,
-            16
-        );
-
-    assert(output != changed);
-
-    // Zero-length output.
-    const auto empty =
+    /*
+     * Zero-length output.
+     */
+    const auto emptyOutput =
         Ff1Prf::evaluate(
             key,
             input,
             0
         );
 
-    assert(empty.empty());
+    assert(
+        emptyOutput.empty()
+    );
 
     return 0;
 }

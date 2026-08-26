@@ -1,11 +1,10 @@
-#include "indiccrypt/fpe/q_block.hpp"
+#include "indiccrypt/fpe/round.hpp"
 
 #include "indiccrypt/crypto/types.hpp"
 #include "indiccrypt/fpe/alphabet.hpp"
 #include "indiccrypt/fpe/domain.hpp"
-#include "indiccrypt/fpe/numeral.hpp"
-#include "indiccrypt/fpe/numeral_encoding.hpp"
 #include "indiccrypt/fpe/parameters.hpp"
+
 #include "indiccrypt/text/symbol.hpp"
 
 #include <array>
@@ -59,90 +58,47 @@ int main() {
         tweak
     );
 
-    const std::vector<FpeRadix::Value> numeral{
+    const std::vector<FpeRadix::Value> a{
         1, 2, 3, 4
     };
 
-    const auto q =
-        Ff1QBlock::build(
-            parameters,
-            8,
-            0,
-            numeral
-        );
-
-    /*
-     * radix = 10
-     * n = 8
-     * u = 4
-     * v = 4
-     *
-     * b = ceil(ceil(4 * log2(10)) / 8)
-     *   = 2
-     *
-     * Q length:
-     *
-     * t + padding + 1 + b
-     * = 4 + 9 + 1 + 2
-     * = 16
-     */
-    assert(q.size() == 16);
-
-    // Tweak.
-    assert(q[0] == std::byte{0x01});
-    assert(q[1] == std::byte{0x02});
-    assert(q[2] == std::byte{0x03});
-    assert(q[3] == std::byte{0x04});
-
-    // Nine zero-padding bytes.
-    for (std::size_t i = 4; i < 13; ++i) {
-        assert(q[i] == std::byte{0x00});
-    }
-
-    // Round.
-    assert(q[13] == std::byte{0x00});
-
-    // NUM_radix(B) = 1234.
-    // Fixed-width two-byte big-endian representation = 0x04D2.
-    assert(q[14] == std::byte{0x04});
-    assert(q[15] == std::byte{0xD2});
-
-    // Determinism.
-    const auto repeated =
-        Ff1QBlock::build(
-            parameters,
-            8,
-            0,
-            numeral
-        );
-
-    assert(q == repeated);
-
-    // Different round changes Q.
-    const auto nextRound =
-        Ff1QBlock::build(
-            parameters,
-            8,
-            1,
-            numeral
-        );
-
-    assert(q != nextRound);
-
-    // Different B changes Q.
-    const std::vector<FpeRadix::Value> differentNumeral{
-        4, 3, 2, 1
+    const std::vector<FpeRadix::Value> b{
+        5, 6, 7, 8
     };
 
-    const auto different =
-        Ff1QBlock::build(
+    const auto encrypted =
+        Ff1Round::encrypt(
             parameters,
-            8,
-            0,
-            differentNumeral
+            a,
+            b,
+            0
         );
 
-    assert(q != different);
+    assert(encrypted.size() == b.size());
+
+    const auto encryptedAgain =
+        Ff1Round::encrypt(
+            parameters,
+            a,
+            b,
+            0
+        );
+
+    assert(encrypted == encryptedAgain);
+
+    for (const auto digit : encrypted) {
+        assert(digit < 10);
+    }
+
+    const auto decrypted =
+        Ff1Round::decrypt(
+            parameters,
+            encrypted,
+            b,
+            0
+        );
+
+    assert(decrypted.size() == encrypted.size());
 
     return 0;
 }

@@ -102,6 +102,10 @@ add_library(indiccrypt_core
     core/fpe/parameter_block.cpp
     core/fpe/q_block.cpp
     core/fpe/numeral_encoding.cpp
+    core/fpe/y.cpp
+    core/fpe/y_number.cpp
+    core/fpe/round_value.cpp
+    core/fpe/round.cpp
 )
 
 target_include_directories(indiccrypt_core
@@ -593,4 +597,76 @@ target_link_libraries(indiccrypt_fpe_numeral_encoding_tests
 add_test(
     NAME indiccrypt_fpe_numeral_encoding_tests
     COMMAND indiccrypt_fpe_numeral_encoding_tests
+)
+
+# ---------------------------------------------------------------------------
+# FPE Y Generator Tests
+# ---------------------------------------------------------------------------
+
+add_executable(indiccrypt_fpe_y_tests
+    tests/fpe/test_fpe_y.cpp
+)
+
+target_link_libraries(indiccrypt_fpe_y_tests
+    PRIVATE
+        indiccrypt_core
+)
+
+add_test(
+    NAME indiccrypt_fpe_y_tests
+    COMMAND indiccrypt_fpe_y_tests
+)
+
+# ---------------------------------------------------------------------------
+# FPE Y Number Tests
+# ---------------------------------------------------------------------------
+
+add_executable(indiccrypt_fpe_y_number_tests
+    tests/fpe/test_fpe_y_number.cpp
+)
+
+target_link_libraries(indiccrypt_fpe_y_number_tests
+    PRIVATE
+        indiccrypt_core
+)
+
+add_test(
+    NAME indiccrypt_fpe_y_number_tests
+    COMMAND indiccrypt_fpe_y_number_tests
+)
+
+# ---------------------------------------------------------------------------
+# FPE Round Value Tests
+# ---------------------------------------------------------------------------
+
+add_executable(indiccrypt_fpe_round_value_tests
+    tests/fpe/test_fpe_round_value.cpp
+)
+
+target_link_libraries(indiccrypt_fpe_round_value_tests
+    PRIVATE
+        indiccrypt_core
+)
+
+add_test(
+    NAME indiccrypt_fpe_round_value_tests
+    COMMAND indiccrypt_fpe_round_value_tests
+)
+
+# ---------------------------------------------------------------------------
+# FPE Round Tests
+# ---------------------------------------------------------------------------
+
+add_executable(indiccrypt_fpe_round_tests
+    tests/fpe/test_fpe_round.cpp
+)
+
+target_link_libraries(indiccrypt_fpe_round_tests
+    PRIVATE
+        indiccrypt_core
+)
+
+add_test(
+    NAME indiccrypt_fpe_round_tests
+    COMMAND indiccrypt_fpe_round_tests
 )

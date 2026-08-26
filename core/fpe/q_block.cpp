@@ -1,6 +1,8 @@
 #include "indiccrypt/fpe/q_block.hpp"
 
 #include "indiccrypt/fpe/numeral.hpp"
+#include "indiccrypt/fpe/numeral_encoding.hpp"
+#include "indiccrypt/fpe/numeral_math.hpp"
 
 #include <cstddef>
 #include <stdexcept>
@@ -10,21 +12,33 @@ namespace indiccrypt::fpe {
 
 namespace {
 
-void appendBigEndian(
-    std::vector<std::byte>& output,
-    std::size_t value,
-    std::size_t width
+std::size_t requiredByteLength(
+    const FpeRadix& radix,
+    std::size_t length
 ) {
-    for (std::size_t i = 0; i < width; ++i) {
-        const std::size_t shift =
-            (width - 1U - i) * 8U;
-
-        output.push_back(
-            static_cast<std::byte>(
-                (value >> shift) & 0xffU
-            )
-        );
+    if (length == 0U) {
+        return 0U;
     }
+
+    const Ff1Numeral::Integer maximum =
+        Ff1NumeralMath::radixPower(
+            radix,
+            length
+        ) - 1;
+
+    if (maximum == 0) {
+        return 1U;
+    }
+
+    std::size_t bits = 0U;
+    Ff1Numeral::Integer value = maximum;
+
+    while (value > 0) {
+        value >>= 1;
+        ++bits;
+    }
+
+    return (bits + 7U) / 8U;
 }
 
 } // namespace
@@ -49,30 +63,49 @@ std::vector<std::byte> Ff1QBlock::build(
     const std::size_t v =
         messageLength - u;
 
+    /*
+     * In FF1 the current B half alternates for
+     * odd-length messages.
+     *
+     * Round 0 -> B has v digits
+     * Round 1 -> B has u digits
+     * Round 2 -> B has v digits
+     * ...
+     *
+     * For even n, u == v, so this naturally
+     * remains unchanged.
+     */
+    const std::size_t expectedBLength =
+        (round % 2U == 0U)
+            ? v
+            : u;
+
+    if (numeral.size() != expectedBLength) {
+        throw std::invalid_argument(
+            "FF1 Q block requires the current B numeral length"
+        );
+    }
+
+    parameters.domain().radix().validate(numeral);
+
     const std::size_t b =
-        (v + 7U) / 8U;
-
-    const std::size_t modulus =
-        1U << 3U;
-
-    (void)modulus;
-
-    std::vector<std::byte> q;
-
-    const auto tweak =
-        parameters.tweak();
+        requiredByteLength(
+            parameters.domain().radix(),
+            numeral.size()
+        );
 
     /*
      * Q =
      *
-     * tweak
-     * || 0-padding
-     * || round
-     * || numeral
-     *
-     * The exact numeral encoding is delegated to the
-     * FF1 numeral layer.
+     * T
+     * || [0]^(-t-b-1 mod 16)
+     * || [i]^1
+     * || NUM_radix(B)^b
      */
+    std::vector<std::byte> q;
+
+    const auto tweak =
+        parameters.tweak();
 
     q.insert(
         q.end(),
@@ -80,12 +113,18 @@ std::vector<std::byte> Ff1QBlock::build(
         tweak.end()
     );
 
-    const std::size_t pad =
-        (16U - (q.size() % 16U)) % 16U;
+    const std::size_t zeroPadding =
+        (
+            16U -
+            (
+                (tweak.size() + b + 1U) %
+                16U
+            )
+        ) % 16U;
 
     q.insert(
         q.end(),
-        pad,
+        zeroPadding,
         std::byte{0}
     );
 
@@ -93,30 +132,25 @@ std::vector<std::byte> Ff1QBlock::build(
         static_cast<std::byte>(round)
     );
 
-    appendBigEndian(
-        q,
-        numeral.size(),
-        4U
+    const Ff1Numeral value(
+        parameters.domain().radix(),
+        std::vector<FpeRadix::Value>(
+            numeral.begin(),
+            numeral.end()
+        )
     );
 
-    for (const auto digit : numeral) {
-        if (
-            digit >=
-            parameters.domain().radix().value()
-        ) {
-            throw std::out_of_range(
-                "FF1 numeral contains invalid digit"
-            );
-        }
-
-        q.push_back(
-            static_cast<std::byte>(digit)
+    const auto encoded =
+        Ff1NumeralEncoding::encode(
+            value,
+            b
         );
-    }
 
-    (void)u;
-    (void)v;
-    (void)b;
+    q.insert(
+        q.end(),
+        encoded.begin(),
+        encoded.end()
+    );
 
     return q;
 }

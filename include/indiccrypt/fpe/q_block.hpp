@@ -3,6 +3,7 @@
 #include "indiccrypt/fpe/parameters.hpp"
 
 #include <cstddef>
+#include <span>
 #include <vector>
 
 namespace indiccrypt::fpe {
