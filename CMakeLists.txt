@@ -51,6 +51,11 @@ message(STATUS "ICU library: ${ICU_UC_LIBRARY}")
 add_library(indiccrypt_core
     core/indiccrypt.cpp
     core/text/indic_text.cpp
+    core/text/grapheme.cpp
+    core/text/script.cpp
+    core/text/language.cpp
+    core/text/symbol.cpp
+    core/text/canonicalizer.cpp
 )
 
 target_include_directories(indiccrypt_core
@@ -92,7 +97,10 @@ endif()
 
 enable_testing()
 
-# Core tests
+# ---------------------------------------------------------------------------
+# Core Tests
+# ---------------------------------------------------------------------------
+
 add_executable(indiccrypt_tests
     tests/test_core.cpp
 )
@@ -107,7 +115,10 @@ add_test(
     COMMAND indiccrypt_tests
 )
 
-# IndicText tests
+# ---------------------------------------------------------------------------
+# IndicText Tests
+# ---------------------------------------------------------------------------
+
 add_executable(indiccrypt_text_tests
     tests/text/test_indic_text.cpp
 )
@@ -120,4 +131,94 @@ target_link_libraries(indiccrypt_text_tests
 add_test(
     NAME indiccrypt_text_tests
     COMMAND indiccrypt_text_tests
+)
+
+# ---------------------------------------------------------------------------
+# Grapheme Engine Tests
+# ---------------------------------------------------------------------------
+
+add_executable(indiccrypt_grapheme_tests
+    tests/text/test_grapheme.cpp
+)
+
+target_link_libraries(indiccrypt_grapheme_tests
+    PRIVATE
+        indiccrypt_core
+)
+
+add_test(
+    NAME indiccrypt_grapheme_tests
+    COMMAND indiccrypt_grapheme_tests
+)
+
+# ---------------------------------------------------------------------------
+# Script Engine Tests
+# ---------------------------------------------------------------------------
+
+add_executable(indiccrypt_script_tests
+    tests/text/test_script.cpp
+)
+
+target_link_libraries(indiccrypt_script_tests
+    PRIVATE
+        indiccrypt_core
+)
+
+add_test(
+    NAME indiccrypt_script_tests
+    COMMAND indiccrypt_script_tests
+)
+
+# ---------------------------------------------------------------------------
+# Language Registry Tests
+# ---------------------------------------------------------------------------
+
+add_executable(indiccrypt_language_tests
+    tests/text/test_language.cpp
+)
+
+target_link_libraries(indiccrypt_language_tests
+    PRIVATE
+        indiccrypt_core
+)
+
+add_test(
+    NAME indiccrypt_language_tests
+    COMMAND indiccrypt_language_tests
+)
+
+# ---------------------------------------------------------------------------
+# IndicSymbol Tests
+# ---------------------------------------------------------------------------
+
+add_executable(indiccrypt_symbol_tests
+    tests/text/test_symbol.cpp
+)
+
+target_link_libraries(indiccrypt_symbol_tests
+    PRIVATE
+        indiccrypt_core
+)
+
+add_test(
+    NAME indiccrypt_symbol_tests
+    COMMAND indiccrypt_symbol_tests
+)
+
+# ---------------------------------------------------------------------------
+# Canonicalizer Tests
+# ---------------------------------------------------------------------------
+
+add_executable(indiccrypt_canonicalizer_tests
+    tests/text/test_canonicalizer.cpp
+)
+
+target_link_libraries(indiccrypt_canonicalizer_tests
+    PRIVATE
+        indiccrypt_core
+)
+
+add_test(
+    NAME indiccrypt_canonicalizer_tests
+    COMMAND indiccrypt_canonicalizer_tests
 )
